@@ -704,9 +704,9 @@ public abstract class Mono<T> implements Publisher<T> {
 	 * @param <D> the type of the resource object
 	 * @return a new {@link Flux} built around a "transactional" resource, with several
 	 * termination path triggering asynchronous cleanup sequences
-	 * @see #using(Supplier, Function, Function, Function, Function)
+	 * @see #usingWhen(Supplier, Function, Function, Function, Function)
 	 */
-	public static <T, D> Mono<T> using(Supplier<D> resourceSupplier,
+	public static <T, D> Mono<T> usingWhen(Supplier<D> resourceSupplier,
 			Function<? super D, ? extends Mono<? extends T>> resourceClosure,
 			Function<? super D, ? extends Publisher<?>> asyncComplete,
 			Function<? super D, ? extends Publisher<?>> asyncError) {
@@ -732,9 +732,9 @@ public abstract class Mono<T> implements Publisher<T> {
 	 * @param <D> the type of the resource object
 	 * @return a new {@link Flux} built around a "transactional" resource, with several
 	 * termination path triggering asynchronous cleanup sequences
-	 * @see #using(Supplier, Function, Function, Function)
+	 * @see #usingWhen(Supplier, Function, Function, Function)
 	 */
-	public static <T, D> Mono<T> using(Supplier<D> resourceSupplier,
+	public static <T, D> Mono<T> usingWhen(Supplier<D> resourceSupplier,
 			Function<? super D, ? extends Mono<? extends T>> resourceClosure,
 			Function<? super D, ? extends Publisher<?>> asyncComplete,
 			Function<? super D, ? extends Publisher<?>> asyncError,

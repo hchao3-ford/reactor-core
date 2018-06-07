@@ -83,15 +83,15 @@ final class MonoUsingAsync<T, S> extends Mono<T> implements Fuseable, SourceProd
 		}
 
 		if (p instanceof Fuseable) {
-			p.subscribe(new FluxUsingAsync.UsingAsyncFuseableSubscriber<>(actual,
+			p.subscribe(new FluxUsingWhen.UsingWhenFuseableSubscriber<>(actual,
 					resource, asyncComplete, asyncError, asyncCancel));
 		}
 		else if (actual instanceof ConditionalSubscriber) {
-			p.subscribe(new FluxUsingAsync.UsingAsyncConditionalSubscriber<>((ConditionalSubscriber<? super T>) actual,
+			p.subscribe(new FluxUsingWhen.UsingWhenConditionalSubscriber<>((ConditionalSubscriber<? super T>) actual,
 					resource, asyncComplete, asyncError, asyncCancel));
 		}
 		else {
-			p.subscribe(new FluxUsingAsync.UsingAsyncSubscriber<>(actual, resource, asyncComplete, asyncError, asyncCancel));
+			p.subscribe(new FluxUsingWhen.UsingWhenSubscriber<>(actual, resource, asyncComplete, asyncError, asyncCancel));
 		}
 	}
 

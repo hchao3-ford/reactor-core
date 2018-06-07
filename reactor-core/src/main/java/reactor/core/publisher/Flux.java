@@ -1605,7 +1605,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 * alt="">
 	 * <p>
 	 * For an asynchronous version of the cleanup, with distinct path for onComplete, onError
-	 * and cancel terminations, see {@link #using(Supplier, Function, Function, Function, Function)}.
+	 * and cancel terminations, see {@link #usingWhen(Supplier, Function, Function, Function, Function)}.
 	 *
 	 * @param resourceSupplier a {@link Callable} that is called on subscribe to generate the resource
 	 * @param sourceSupplier a factory to derive a {@link Publisher} from the supplied resource
@@ -1614,7 +1614,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 * @param <D> resource type
 	 *
 	 * @return a new {@link Flux} built around a disposable resource
-	 * @see #using(Supplier, Function, Function, Function, Function)
+	 * @see #usingWhen(Supplier, Function, Function, Function, Function)
 	 * @see #usingWhen(Supplier, Function, Function)
 	 */
 	public static <T, D> Flux<T> using(Callable<? extends D> resourceSupplier, Function<? super D, ? extends
@@ -1634,7 +1634,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 * alt="">
 	 * <p>
 	 * For an asynchronous version of the cleanup, with distinct path for onComplete, onError
-	 * and cancel terminations, see {@link #using(Supplier, Function, Function, Function, Function)}.
+	 * and cancel terminations, see {@link #usingWhen(Supplier, Function, Function, Function, Function)}.
 	 *
 	 * @param resourceSupplier a {@link Callable} that is called on subscribe to generate the resource
 	 * @param sourceSupplier a factory to derive a {@link Publisher} from the supplied resource
@@ -1644,7 +1644,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 * @param <D> resource type
 	 *
 	 * @return a new {@link Flux} built around a disposable resource
-	 * @see #using(Supplier, Function, Function, Function, Function)
+	 * @see #usingWhen(Supplier, Function, Function, Function, Function)
 	 * @see #usingWhen(Supplier, Function, Function)
 	 */
 	public static <T, D> Flux<T> using(Callable<? extends D> resourceSupplier, Function<? super D, ? extends
@@ -1671,14 +1671,14 @@ public abstract class Flux<T> implements Publisher<T> {
 	 * @param <D> the type of the resource object
 	 * @return a new {@link Flux} built around a "transactional" resource, with several
 	 * termination path triggering asynchronous cleanup sequences
-	 * @see #using(Supplier, Function, Function, Function, Function)
+	 * @see #usingWhen(Supplier, Function, Function, Function, Function)
 	 */
-	public static <T, D> Flux<T> using(Supplier<D> resourceSupplier,
+	public static <T, D> Flux<T> usingWhen(Supplier<D> resourceSupplier,
 			Function<? super D, ? extends Publisher<? extends T>> resourceClosure,
 			Function<? super D, ? extends Publisher<?>> asyncComplete,
 			Function<? super D, ? extends Publisher<?>> asyncError) {
 		//null asyncCancel translates to using the `asyncComplete` function in the operator
-		return onAssembly(new FluxUsingAsync<>(resourceSupplier, resourceClosure,
+		return onAssembly(new FluxUsingWhen<>(resourceSupplier, resourceClosure,
 				asyncComplete, asyncError, null));
 	}
 
@@ -1700,15 +1700,15 @@ public abstract class Flux<T> implements Publisher<T> {
 	 * @param <D> the type of the resource object
 	 * @return a new {@link Flux} built around a "transactional" resource, with several
 	 * termination path triggering asynchronous cleanup sequences
-	 * @see #using(Supplier, Function, Function, Function)
+	 * @see #usingWhen(Supplier, Function, Function, Function)
 	 */
-	public static <T, D> Flux<T> using(Supplier<D> resourceSupplier,
+	public static <T, D> Flux<T> usingWhen(Supplier<D> resourceSupplier,
 			Function<? super D, ? extends Publisher<? extends T>> resourceClosure,
 			Function<? super D, ? extends Publisher<?>> asyncComplete,
 			Function<? super D, ? extends Publisher<?>> asyncError,
 			//the operator itself accepts null for asyncCancel, but we won't in the public API
 			Function<? super D, ? extends Publisher<?>> asyncCancel) {
-		return onAssembly(new FluxUsingAsync<>(resourceSupplier, resourceClosure,
+		return onAssembly(new FluxUsingWhen<>(resourceSupplier, resourceClosure,
 				asyncComplete, asyncError, asyncCancel));
 	}
 
@@ -1728,12 +1728,12 @@ public abstract class Flux<T> implements Publisher<T> {
 	 * @param <D> the type of the resource object
 	 * @return a new {@link Flux} built around a "transactional" resource, with asynchronous
 	 * cleanup on all terminations (onComplete, onError, cancel)
-	 * @see #using(Supplier, Function, Function, Function, Function)
+	 * @see #usingWhen(Supplier, Function, Function, Function, Function)
 	 */
 	public static <T, D> Flux<T> usingWhen(Supplier<D> resourceSupplier,
 			Function<? super D, ? extends Publisher<? extends T>> resourceClosure,
 			Function<? super D, ? extends Publisher<?>> asyncCleanup) {
-		return using(resourceSupplier, resourceClosure, asyncCleanup, asyncCleanup);
+		return usingWhen(resourceSupplier, resourceClosure, asyncCleanup, asyncCleanup);
 	}
 
 	/**

@@ -36,14 +36,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
 @RunWith(JUnitParamsRunner.class)
-public class FluxUsingAsyncTest {
+public class FluxUsingWhenTest {
 	
 	@Test
 	public void failToSupplyResourceDoesntApplyCallback() {
 		AtomicBoolean commitDone = new AtomicBoolean();
 		AtomicBoolean rollbackDone = new AtomicBoolean();
 
-		Flux<String> test = Flux.using(() -> (TestResource) null,
+		Flux<String> test = Flux.usingWhen(() -> (TestResource) null,
 				tr -> Mono.just("unexpected"),
 				tr -> Mono.fromRunnable(() -> commitDone.set(true)),
 				tr -> Mono.fromRunnable(() -> rollbackDone.set(true)));
@@ -61,7 +61,7 @@ public class FluxUsingAsyncTest {
 	public void failToGenerateClosureAppliesRollback() {
 		TestResource testResource = new TestResource();
 
-		Flux<String> test = Flux.using(() -> testResource,
+		Flux<String> test = Flux.usingWhen(() -> testResource,
 				tr -> {
 					throw new UnsupportedOperationException("boom");
 				},
@@ -79,7 +79,7 @@ public class FluxUsingAsyncTest {
 	public void nullClosureAppliesRollback() {
 		TestResource testResource = new TestResource();
 
-		Flux<String> test = Flux.using(() -> testResource,
+		Flux<String> test = Flux.usingWhen(() -> testResource,
 				tr -> null,
 				TestResource::commit,
 				TestResource::rollback);
@@ -98,7 +98,7 @@ public class FluxUsingAsyncTest {
 	public void cancelWithHandler(Flux<String> source) {
 		TestResource testResource = new TestResource();
 
-		Flux<String> test = Flux.using(() -> testResource,
+		Flux<String> test = Flux.usingWhen(() -> testResource,
 				tr -> source,
 				TestResource::commit,
 				TestResource::rollback,
@@ -121,7 +121,7 @@ public class FluxUsingAsyncTest {
 		Loggers.useCustomLoggers(name -> tl);
 
 		try {
-			Flux<String> test = Flux.using(() -> testResource,
+			Flux<String> test = Flux.usingWhen(() -> testResource,
 					tr -> source,
 					TestResource::commit,
 					TestResource::rollback,
@@ -154,7 +154,7 @@ public class FluxUsingAsyncTest {
 		TestResource testResource = new TestResource();
 
 		try {
-			Flux<String> test = Flux.using(() -> testResource,
+			Flux<String> test = Flux.usingWhen(() -> testResource,
 					tr -> source,
 					TestResource::commit,
 					TestResource::rollback,
@@ -182,7 +182,7 @@ public class FluxUsingAsyncTest {
 		TestResource testResource = new TestResource();
 
 		Flux<String> test = Flux
-				.using(() -> testResource,
+				.usingWhen(() -> testResource,
 						tr -> source,
 						TestResource::commit,
 						TestResource::rollback)
@@ -204,7 +204,7 @@ public class FluxUsingAsyncTest {
 		Loggers.useCustomLoggers(name -> tl);
 
 		try {
-			Flux<String> test = Flux.using(() -> testResource,
+			Flux<String> test = Flux.usingWhen(() -> testResource,
 					tr -> source,
 					r -> r.commit()
 					      //immediate error to trigger the logging within the test
@@ -233,7 +233,7 @@ public class FluxUsingAsyncTest {
 	public void apiCommit(Flux<String> fullTransaction) {
 		final AtomicReference<TestResource> ref = new AtomicReference<>();
 
-		Flux<String> flux = Flux.using(TestResource::new,
+		Flux<String> flux = Flux.usingWhen(TestResource::new,
 				d -> {
 					ref.set(d);
 					return fullTransaction;
@@ -259,7 +259,7 @@ public class FluxUsingAsyncTest {
 	public void apiCommitFailure(Flux<String> fullTransaction) {
 		final AtomicReference<TestResource> ref = new AtomicReference<>();
 
-		Flux<String> flux = Flux.using(TestResource::new,
+		Flux<String> flux = Flux.usingWhen(TestResource::new,
 				d -> {
 					ref.set(d);
 					return fullTransaction;
@@ -286,7 +286,7 @@ public class FluxUsingAsyncTest {
 	public void commitGeneratingNull(Flux<String> fullTransaction) {
 		final AtomicReference<TestResource> ref = new AtomicReference<>();
 
-		Flux<String> flux = Flux.using(TestResource::new,
+		Flux<String> flux = Flux.usingWhen(TestResource::new,
 				d -> {
 					ref.set(d);
 					return fullTransaction;
@@ -313,7 +313,7 @@ public class FluxUsingAsyncTest {
 	@Parameters(method = "sourcesTransactionError")
 	public void apiRollback(Flux<String> transactionWithError) {
 		final AtomicReference<TestResource> ref = new AtomicReference<>();
-		Flux<String> flux = Flux.using(TestResource::new,
+		Flux<String> flux = Flux.usingWhen(TestResource::new,
 				d -> {
 					ref.set(d);
 					return transactionWithError;
@@ -339,7 +339,7 @@ public class FluxUsingAsyncTest {
 	@Parameters(method = "sourcesTransactionError")
 	public void apiRollbackFailure(Flux<String> transactionWithError) {
 		final AtomicReference<TestResource> ref = new AtomicReference<>();
-		Flux<String> flux = Flux.using(TestResource::new,
+		Flux<String> flux = Flux.usingWhen(TestResource::new,
 				d -> {
 					ref.set(d);
 					return transactionWithError;
@@ -365,7 +365,7 @@ public class FluxUsingAsyncTest {
 	@Parameters(method = "sourcesTransactionError")
 	public void apiRollbackGeneratingNull(Flux<String> transactionWithError) {
 		final AtomicReference<TestResource> ref = new AtomicReference<>();
-		Flux<String> flux = Flux.using(TestResource::new,
+		Flux<String> flux = Flux.usingWhen(TestResource::new,
 				d -> {
 					ref.set(d);
 					return transactionWithError;
@@ -442,7 +442,8 @@ public class FluxUsingAsyncTest {
 				new FluxPeekFuseableTest.AssertQueueSubscription<>();
 		assertQueueSubscription.offer("foo");
 
-		FluxUsingAsync.UsingAsyncSubscriber<String, String> test = new FluxUsingAsync.UsingAsyncSubscriber<>(
+		FluxUsingWhen.UsingWhenSubscriber<String, String>
+				test = new FluxUsingWhen.UsingWhenSubscriber<>(
 				new LambdaSubscriber<>(null, null, null, null),
 				"resource", it -> Mono.empty(), it -> Mono.empty(), null);
 
@@ -462,7 +463,8 @@ public class FluxUsingAsyncTest {
 				new FluxPeekFuseableTest.AssertQueueSubscription<>();
 		assertQueueSubscription.offer("foo");
 
-		FluxUsingAsync.UsingAsyncFuseableSubscriber<String, String> test = new FluxUsingAsync.UsingAsyncFuseableSubscriber<>(
+		FluxUsingWhen.UsingWhenFuseableSubscriber<String, String>
+				test = new FluxUsingWhen.UsingWhenFuseableSubscriber<>(
 				new LambdaSubscriber<>(null, null, null, null),
 				"resource", it -> Mono.empty(), it -> Mono.empty(), null);
 
@@ -491,7 +493,8 @@ public class FluxUsingAsyncTest {
 				new FluxPeekFuseableTest.AssertQueueSubscription<>();
 		assertQueueSubscription.offer("foo");
 
-		FluxUsingAsync.UsingAsyncFuseableSubscriber<String, String> test = new FluxUsingAsync.UsingAsyncFuseableSubscriber<>(
+		FluxUsingWhen.UsingWhenFuseableSubscriber<String, String>
+				test = new FluxUsingWhen.UsingWhenFuseableSubscriber<>(
 				new LambdaSubscriber<>(null, null, null, null),
 				"resource", it -> Mono.error(new IllegalStateException("asyncComplete error")), it -> Mono.empty(), null);
 

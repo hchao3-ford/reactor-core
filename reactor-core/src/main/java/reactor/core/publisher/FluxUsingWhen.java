@@ -28,7 +28,6 @@ import org.reactivestreams.Subscription;
 import reactor.core.CoreSubscriber;
 import reactor.core.Exceptions;
 import reactor.core.Fuseable;
-import reactor.util.Logger;
 import reactor.util.Loggers;
 import reactor.util.annotation.Nullable;
 
@@ -43,7 +42,7 @@ import reactor.util.annotation.Nullable;
  * @param <T> the value type streamed
  * @param <S> the resource type
  */
-final class FluxUsingAsync<T, S> extends Flux<T> implements Fuseable, SourceProducer<T> {
+final class FluxUsingWhen<T, S> extends Flux<T> implements Fuseable, SourceProducer<T> {
 
 	final Supplier<S>                                           resourceSupplier;
 	final Function<? super S, ? extends Publisher<? extends T>> resourceClosure;
@@ -52,7 +51,7 @@ final class FluxUsingAsync<T, S> extends Flux<T> implements Fuseable, SourceProd
 	@Nullable
 	final Function<? super S, ? extends Publisher<?>>           asyncCancel;
 
-	FluxUsingAsync(Supplier<S> resourceSupplier,
+	FluxUsingWhen(Supplier<S> resourceSupplier,
 			Function<? super S, ? extends Publisher<? extends T>> resourceClosure,
 			Function<? super S, ? extends Publisher<?>> asyncComplete,
 			Function<? super S, ? extends Publisher<?>> asyncError,
@@ -90,15 +89,15 @@ final class FluxUsingAsync<T, S> extends Flux<T> implements Fuseable, SourceProd
 		}
 
 		if (p instanceof Fuseable) {
-			from(p).subscribe(new UsingAsyncFuseableSubscriber<>(actual,
+			from(p).subscribe(new UsingWhenFuseableSubscriber<>(actual,
 					resource, asyncComplete, asyncError, asyncCancel));
 		}
 		else if (actual instanceof ConditionalSubscriber) {
-			from(p).subscribe(new UsingAsyncConditionalSubscriber<>((ConditionalSubscriber<? super T>) actual,
+			from(p).subscribe(new UsingWhenConditionalSubscriber<>((ConditionalSubscriber<? super T>) actual,
 					resource, asyncComplete, asyncError, asyncCancel));
 		}
 		else {
-			from(p).subscribe(new UsingAsyncSubscriber<>(actual, resource, asyncComplete, asyncError, asyncCancel));
+			from(p).subscribe(new UsingWhenSubscriber<>(actual, resource, asyncComplete, asyncError, asyncCancel));
 		}
 	}
 
@@ -107,14 +106,14 @@ final class FluxUsingAsync<T, S> extends Flux<T> implements Fuseable, SourceProd
 		return null; //no particular key to be represented, still useful in hooks
 	}
 
-	static class UsingAsyncSubscriber<T, S> implements InnerOperator<T, T>,
-	                                                   QueueSubscription<T> {
+	static class UsingWhenSubscriber<T, S> implements InnerOperator<T, T>,
+	                                                  QueueSubscription<T> {
 
 		//state that differs in the different variants
-		final CoreSubscriber<? super T>                   actual;
-		volatile Subscription                             s;
-		static final AtomicReferenceFieldUpdater<UsingAsyncSubscriber, Subscription>SUBSCRIPTION =
-				AtomicReferenceFieldUpdater.newUpdater(UsingAsyncSubscriber.class,
+		final CoreSubscriber<? super T>                                            actual;
+		volatile Subscription                                                      s;
+		static final AtomicReferenceFieldUpdater<UsingWhenSubscriber, Subscription>SUBSCRIPTION =
+				AtomicReferenceFieldUpdater.newUpdater(UsingWhenSubscriber.class,
 						Subscription.class, "s");
 
 		//rest of the state is always the same
@@ -124,11 +123,11 @@ final class FluxUsingAsync<T, S> extends Flux<T> implements Fuseable, SourceProd
 		@Nullable
 		final Function<? super S, ? extends Publisher<?>> asyncCancel;
 
-		volatile int                                                 wip;
-		static final AtomicIntegerFieldUpdater<UsingAsyncSubscriber> WIP =
-				AtomicIntegerFieldUpdater.newUpdater(UsingAsyncSubscriber.class, "wip");
+		volatile int                                                wip;
+		static final AtomicIntegerFieldUpdater<UsingWhenSubscriber> WIP =
+				AtomicIntegerFieldUpdater.newUpdater(UsingWhenSubscriber.class, "wip");
 
-		UsingAsyncSubscriber(CoreSubscriber<? super T> actual,
+		UsingWhenSubscriber(CoreSubscriber<? super T> actual,
 				S resource,
 				Function<? super S, ? extends Publisher<?>> asyncComplete,
 				Function<? super S, ? extends Publisher<?>> asyncError,
@@ -168,17 +167,17 @@ final class FluxUsingAsync<T, S> extends Flux<T> implements Fuseable, SourceProd
 						//FIXME better integration of asyncCancel?
 						Flux.from(asyncCancel.apply(resource))
 						    .subscribe(v -> {},
-								error -> Loggers.getLogger(FluxUsingAsync.class).warn("Async resource cleanup failed after cancel", error));
+								error -> Loggers.getLogger(FluxUsingWhen.class).warn("Async resource cleanup failed after cancel", error));
 					}
 					else {
 						//FIXME should there be a default to the "complete" path on cancellation, or NO-OP?
 						Flux.from(asyncComplete.apply(resource))
 						    .subscribe(v -> {},
-								error -> Loggers.getLogger(FluxUsingAsync.class).warn("Async resource cleanup failed after cancel", error));
+								error -> Loggers.getLogger(FluxUsingWhen.class).warn("Async resource cleanup failed after cancel", error));
 					}
 				}
 				catch (Throwable error) {
-					Loggers.getLogger(FluxUsingAsync.class).warn("Error generating async resource cleanup during onCancel", error);
+					Loggers.getLogger(FluxUsingWhen.class).warn("Error generating async resource cleanup during onCancel", error);
 				}
 			}
 		}
@@ -261,13 +260,13 @@ final class FluxUsingAsync<T, S> extends Flux<T> implements Fuseable, SourceProd
 		}
 	}
 
-	static final class UsingAsyncConditionalSubscriber<T, S>
-			extends UsingAsyncSubscriber<T, S>
+	static final class UsingWhenConditionalSubscriber<T, S>
+			extends UsingWhenSubscriber<T, S>
 			implements ConditionalSubscriber<T> {
 
 		final ConditionalSubscriber<? super T>            actual;
 
-		UsingAsyncConditionalSubscriber(ConditionalSubscriber<? super T> actual,
+		UsingWhenConditionalSubscriber(ConditionalSubscriber<? super T> actual,
 				S resource,
 				Function<? super S, ? extends Publisher<?>> asyncComplete,
 				Function<? super S, ? extends Publisher<?>> asyncError,
@@ -282,15 +281,15 @@ final class FluxUsingAsync<T, S> extends Flux<T> implements Fuseable, SourceProd
 		}
 	}
 
-	static final class UsingAsyncFuseableSubscriber<T, S> implements InnerOperator<T, T>,
-	                                                                 QueueSubscription<T> {
+	static final class UsingWhenFuseableSubscriber<T, S> implements InnerOperator<T, T>,
+	                                                                QueueSubscription<T> {
 
 		//state that differs in the different variants
 		int mode;
-		final CoreSubscriber<? super T>                   actual;
-		volatile     QueueSubscription<T> qs;
-		static final AtomicReferenceFieldUpdater<UsingAsyncFuseableSubscriber, QueueSubscription> SUBSCRIPTION =
-				AtomicReferenceFieldUpdater.newUpdater(UsingAsyncFuseableSubscriber.class,
+		final CoreSubscriber<? super T>                                                         actual;
+		volatile     QueueSubscription<T>                                                       qs;
+		static final AtomicReferenceFieldUpdater<UsingWhenFuseableSubscriber, QueueSubscription>SUBSCRIPTION =
+				AtomicReferenceFieldUpdater.newUpdater(UsingWhenFuseableSubscriber.class,
 						QueueSubscription.class, "qs");
 
 		//rest of the state is same as UsingAsyncSubscriber
@@ -301,10 +300,10 @@ final class FluxUsingAsync<T, S> extends Flux<T> implements Fuseable, SourceProd
 		final Function<? super S, ? extends Publisher<?>> asyncCancel;
 		volatile int                                      wip;
 
-		static final AtomicIntegerFieldUpdater<UsingAsyncFuseableSubscriber> WIP =
-				AtomicIntegerFieldUpdater.newUpdater(UsingAsyncFuseableSubscriber.class, "wip");
+		static final AtomicIntegerFieldUpdater<UsingWhenFuseableSubscriber> WIP =
+				AtomicIntegerFieldUpdater.newUpdater(UsingWhenFuseableSubscriber.class, "wip");
 
-		UsingAsyncFuseableSubscriber(CoreSubscriber<? super T> actual,
+		UsingWhenFuseableSubscriber(CoreSubscriber<? super T> actual,
 				S resource,
 				Function<? super S, ? extends Publisher<?>> asyncComplete,
 				Function<? super S, ? extends Publisher<?>> asyncError,
@@ -349,17 +348,17 @@ final class FluxUsingAsync<T, S> extends Flux<T> implements Fuseable, SourceProd
 							//FIXME better integration of asyncCancel?
 							Flux.from(asyncCancel.apply(resource))
 							    .subscribe(v -> {},
-									    error -> Loggers.getLogger(FluxUsingAsync.class).warn("Async resource cleanup failed after cancel", error));
+									    error -> Loggers.getLogger(FluxUsingWhen.class).warn("Async resource cleanup failed after cancel", error));
 						}
 						else {
 							//FIXME should there be a default to the "complete" path on cancellation, or NO-OP?
 							Flux.from(asyncComplete.apply(resource))
 							    .subscribe(v -> {},
-									    error -> Loggers.getLogger(FluxUsingAsync.class).warn("Async resource cleanup failed after cancel", error));
+									    error -> Loggers.getLogger(FluxUsingWhen.class).warn("Async resource cleanup failed after cancel", error));
 						}
 					}
 					catch (Throwable error) {
-						Loggers.getLogger(FluxUsingAsync.class).warn("Error generating async resource cleanup during onCancel", error);
+						Loggers.getLogger(FluxUsingWhen.class).warn("Error generating async resource cleanup during onCancel", error);
 					}
 				}
 				//else already cancelled
@@ -441,7 +440,7 @@ final class FluxUsingAsync<T, S> extends Flux<T> implements Fuseable, SourceProd
 				if (WIP.compareAndSet(this, 0, 1)) {
 					Flux.from(asyncComplete.apply(resource))
 					    .subscribe(it -> {},
-							    e -> Loggers.getLogger(FluxUsingAsync.class).warn("Async resource cleanup failed after poll", e));
+							    e -> Loggers.getLogger(FluxUsingWhen.class).warn("Async resource cleanup failed after poll", e));
 				}
 			}
 			return v;
